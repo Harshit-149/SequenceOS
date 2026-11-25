@@ -10,7 +10,7 @@ Last updated: 2026-11-25
 - [?] The project is ready for a local setup attempt using `README.md`; it is not verified as production-ready.
 - [?] `.git` is not a usable repository in this environment; `git status` reports “not a git repository.”
 - [x] Reworked the GitHub-facing README and added a step-by-step local setup guide.
-- [~] `Harshit-149/SequenceOS` now exists and is verified private. The GitHub-facing README is committed; full source upload is in progress.
+- [x] `Harshit-149/SequenceOS` is private, and the project is published on `main`. The remote tree includes the app, schema/migration, README, and local setup guide; `.env`, `.env.save`, and `node_modules` were excluded.
 
 ## Features implemented
 
@@ -46,6 +46,7 @@ Last updated: 2026-11-25
 - Gitleaks 8.30.1 — passed, no leaks found in working tree.
 - `npm run format:check` after documentation edits — passed.
 - Manual credential review of revised markdown — no secrets included. Gitleaks was not rerun because its temporary binary is no longer available in this environment; see `DEVELOPMENT_CHECKLIST.md`.
+- GitHub remote verification — passed; `Harshit-149/SequenceOS` reports private visibility, and the main branch resolves to the uploaded project tree. Confirmed local secrets and dependencies are absent from the remote tree.
 
 ## Security issues discovered and fixed
 
@@ -59,7 +60,7 @@ Last updated: 2026-11-25
 - InfraOS adapter’s request/response contract and live delivery need staging verification. TriageOS signature format needs provider confirmation. ScoutOS and CRM connectors await their contracts/credentials.
 - OpenAI draft route is implemented but no live API call was run.
 - Browser visual/accessibility checks and production deployment configuration were not run.
-- Publishing to GitHub requires connecting GitHub and choosing repository visibility. This working directory is not a Git repository, so it must be initialized in an appropriate writable local folder before pushing.
+- This workspace's `.git` directory remains an empty read-only placeholder, so local Git commands still do not work here. The uploaded remote repo is complete; clone it from GitHub for future Git-based changes.
 
 ## Next recommended task
 

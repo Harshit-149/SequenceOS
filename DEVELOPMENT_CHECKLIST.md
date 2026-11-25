@@ -71,7 +71,7 @@ Status legend: `[ ]` Not started · `[~]` In progress · `[x]` Verified complete
 - [x] Document remaining security and operational risks. (`README.md`, `ARCHITECTURE.md`, and `PROGRESS.md`.)
 - [x] Update README and CHANGELOG.
 - [x] Write a GitHub-facing project overview and a step-by-step local setup guide. (`README.md`, `docs/LOCAL_SETUP.md`; formatting check passed.)
-- [~] Create/publish the GitHub repository. (`Harshit-149/SequenceOS` exists and is verified private; the README is committed. Full project file upload is in progress.)
+- [x] Create/publish the GitHub repository. (`Harshit-149/SequenceOS` is private; all project source and setup docs are uploaded to `main`. Verified the remote tree excludes `.env`, `.env.save`, and `node_modules`.)
 - [?] Run Gitleaks on the revised documentation. (Gitleaks binary is unavailable in the current environment; docs were manually reviewed for credentials. The prior full-tree scan passed on 2026-11-24.)
 - [?] Production readiness and live delivery. (Requires real database/Redis, TLS/secrets, provider contract verification and staging send.)
 
