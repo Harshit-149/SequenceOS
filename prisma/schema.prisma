@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REPLIED
+  UNSUBSCRIBED
+  BOUNCED
+  FAILED
+}
+
+enum SendStatus {
+  QUEUED
+  SENDING
+  SIMULATED
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+}
+
+enum OutboxStatus {
+  PENDING
+  QUEUED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  memberships  Membership[]
+  sessions     RefreshSession[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Workspace {
+  id          String        @id @default(cuid())
+  name        String
+  memberships Membership[]
+  leads       Lead[]
+  templates   EmailTemplate[]
+  campaigns   Campaign[]
+  sequences   Sequence[]
+  enrollments Enrollment[]
+  suppressions Suppression[]
+  integrations Integration[]
+  outboxEvents SequenceOutbox[]
+  webhookReceipts WebhookReceipt[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Membership {
+  id          String         @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        MembershipRole @default(MEMBER)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId, role])
+}
+
+model RefreshSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model Lead {
+  id          String        @id @default(cuid())
+  workspaceId String
+  email       String
+  firstName   String?
+  lastName    String?
+  company     String?
+  title       String?
+  customData  Json          @default("{}")
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, email])
+  @@index([workspaceId, createdAt])
+}
+
+model EmailTemplate {
+  id          String     @id @default(cuid())
+  workspaceId String
+  name        String
+  subject     String
+  bodyText    String
+  bodyHtml    String?
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  steps       SequenceStep[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, name])
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  workspaceId String
+  name        String
+  status      CampaignStatus @default(DRAFT)
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sequences   Sequence[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, status])
+}
+
+model Sequence {
+  id          String        @id @default(cuid())
+  workspaceId String
+  campaignId  String
+  name        String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign    Campaign     @relation(fields: [campaignId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  steps       SequenceStep[]
+  enrollments Enrollment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, campaignId])
+}
+
+model SequenceStep {
+  id             String        @id @default(cuid())
+  sequenceId     String
+  workspaceId    String
+  position       Int
+  delayMinutes   Int            @default(0)
+  templateId     String
+  sequence       Sequence       @relation(fields: [sequenceId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  template       EmailTemplate  @relation(fields: [templateId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  sendAttempts   SendAttempt[]
+  outboxEvents   SequenceOutbox[]
+
+  @@unique([sequenceId, position])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, sequenceId, position])
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  workspaceId String
+  sequenceId  String
+  leadId      String
+  status      EnrollmentStatus @default(ACTIVE)
+  currentStep Int              @default(0)
+  enrolledAt  DateTime         @default(now())
+  completedAt DateTime?
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sequence    Sequence        @relation(fields: [sequenceId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  lead        Lead            @relation(fields: [leadId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  sendAttempts SendAttempt[]
+  outboxEvents  SequenceOutbox[]
+
+  @@unique([id, workspaceId])
+  @@unique([sequenceId, leadId])
+  @@index([workspaceId, status, enrolledAt])
+}
+
+model Suppression {
+  id          String    @id @default(cuid())
+  workspaceId String
+  email       String
+  reason      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, email])
+}
+
+model SendAttempt {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  enrollmentId   String
+  stepId         String
+  idempotencyKey String        @unique
+  status         SendStatus    @default(QUEUED)
+  providerId     String?
+  errorCode      String?
+  sentAt         DateTime?
+  lockedUntil    DateTime?
+  enrollment     Enrollment    @relation(fields: [enrollmentId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  step           SequenceStep  @relation(fields: [stepId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  createdAt      DateTime      @default(now())
+
+  @@index([workspaceId, enrollmentId, status])
+}
+
+model SequenceOutbox {
+  id             String       @id @default(cuid())
+  workspaceId    String
+  enrollmentId   String
+  stepId         String
+  idempotencyKey String       @unique
+  status         OutboxStatus @default(PENDING)
+  availableAt    DateTime     @default(now())
+  queuedAt       DateTime?
+  workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  enrollment     Enrollment  @relation(fields: [enrollmentId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  step           SequenceStep @relation(fields: [stepId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+
+  @@index([status, availableAt])
+  @@index([workspaceId, enrollmentId])
+}
+
+model WebhookReceipt {
+  id          String    @id @default(cuid())
+  workspaceId String
+  provider    String
+  eventId     String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  processedAt DateTime  @default(now())
+
+  @@unique([provider, eventId])
+  @@index([workspaceId, processedAt])
+}
+
+model Integration {
+  id          String    @id @default(cuid())
+  workspaceId String
+  provider    String
+  config      Json      @default("{}")
+  secretRef   String?
+  enabled     Boolean   @default(false)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, provider])
+}

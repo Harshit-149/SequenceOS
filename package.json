@@ -1,0 +1,46 @@
+{
+  "name": "sequenceos",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm --workspace @sequenceos/api run dev",
+    "dev:web": "npm --workspace @sequenceos/web run dev",
+    "worker": "npm --workspace @sequenceos/api run dev:worker",
+    "worker:start": "npm --workspace @sequenceos/api run worker:start",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspace @sequenceos/api",
+    "lint": "eslint apps --max-warnings=0",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "prisma": "6.12.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.74.0"
+  },
+  "allowScripts": {
+    "@prisma/engines@6.12.0": true,
+    "argon2@0.41.1": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true,
+    "msgpackr-extract@3.0.7": true,
+    "prisma@6.12.0": true,
+    "@prisma/client": true
+  },
+  "dependencies": {
+    "@prisma/client": "^6.12.0"
+  }
+}

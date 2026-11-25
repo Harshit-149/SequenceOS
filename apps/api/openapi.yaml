@@ -1,0 +1,269 @@
+openapi: 3.1.0
+info:
+  title: SequenceOS API
+  version: 0.1.0
+  description: Versioned, workspace-scoped outbound sequence API.
+servers:
+  - url: http://localhost:4000/api/v1
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        "200": { description: API is ready }
+  /ready:
+    get:
+      security: []
+      summary: Verify API and database readiness
+      responses:
+        "200": { description: Database is ready }
+        "503": { description: Database is unavailable }
+  /auth/signup:
+    post:
+      security: []
+      summary: Create an account and initial owner workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, workspaceName]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12, maxLength: 128 }
+                workspaceName: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        "201":
+          {
+            description: Account created; refresh token is set as an HttpOnly cookie,
+          }
+        "400": { description: Invalid input }
+        "409": { description: Email already exists }
+  /auth/login:
+    post:
+      security: []
+      summary: Sign in
+      responses:
+        "200":
+          {
+            description: Access token and user workspaces returned; refresh token is an HttpOnly cookie,
+          }
+        "401": { description: Invalid credentials }
+  /auth/refresh:
+    post:
+      security: []
+      summary: Rotate the refresh cookie and issue an access token
+      responses:
+        "200": { description: Access token returned; refresh cookie rotated }
+        "401": { description: Refresh session invalid or expired }
+  /auth/logout:
+    post:
+      security: []
+      responses:
+        "204": { description: Refresh session revoked }
+  /workspaces:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspaces where the user has membership }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Workspace created for current user }
+  /workspaces/{workspaceId}/leads:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List leads in the authorized workspace
+      responses:
+        "200": { description: Paginated leads }
+        "404": { description: Workspace not found or not accessible }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create a lead
+      responses:
+        "201": { description: Lead created in the authorized workspace }
+  /workspaces/{workspaceId}/campaigns:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+    get:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspace campaigns }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Campaign created }
+  /workspaces/{workspaceId}/templates:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+    get:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspace templates }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Template created }
+  /workspaces/{workspaceId}/sequences:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+    get:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspace sequences and steps }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Sequence created }
+  /workspaces/{workspaceId}/sequences/{sequenceId}/steps:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+      - in: path
+        name: sequenceId
+        required: true
+        schema: { type: string }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Add the next ordered step with a workspace-owned template
+      responses:
+        "201": { description: Step added }
+        "400": { description: Invalid position or input }
+        "404": { description: Sequence or template unavailable in workspace }
+  /workspaces/{workspaceId}/sequences/{sequenceId}/enrollments:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+      - in: path
+        name: sequenceId
+        required: true
+        schema: { type: string }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Enroll up to 500 workspace-owned leads, excluding suppressions
+      responses:
+        "201": { description: Enrollments and scheduled count }
+        "409": { description: Campaign is paused or sequence has no steps }
+  /workspaces/{workspaceId}/analytics:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Workspace-scoped counts and send activity }
+  /workspaces/{workspaceId}/integrations:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          {
+            description: Integration status and safe workspace settings; no secrets,
+          }
+  /workspaces/{workspaceId}/integrations/{provider}:
+    put:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: provider
+          required: true
+          schema:
+            {
+              type: string,
+              enum: [INFRAOS, SCOUTOS, TRIAGEOS, SALESFORCE, HUBSPOT],
+            }
+      responses:
+        "200": { description: Safe integration state updated }
+        "409":
+          {
+            description: Provider is unavailable or server credentials are absent,
+          }
+  /workspaces/{workspaceId}/personalizations:
+    post:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+      summary: Generate a preview using workspace-scoped contact and template data
+      description: Only runs when the server has an OpenAI API key. Sends contact name, company, title, goal, and template to the configured provider; excludes email address. Output is a draft and is not saved or sent.
+      responses:
+        "200": { description: Structured personalized subject and body draft }
+        "503": { description: AI provider is not configured }
+  /workspaces/{workspaceId}/suppressions:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Workspace suppression list }
+    post:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string }
+      responses:
+        "201": { description: Email suppressed in the current workspace }
+  /public/unsubscribe:
+    post:
+      security: []
+      summary: Verify a signed unsubscribe token and suppress further sends
+      responses:
+        "200":
+          { description: Address suppressed and active enrollments stopped }
+        "400": { description: Invalid or expired token }
+  /webhooks/triageos:
+    post:
+      security: []
+      parameters:
+        - in: header
+          name: x-triageos-signature
+          required: true
+          schema: { type: string, pattern: "^sha256=[a-f0-9]{64}$" }
+      summary: Process signed reply, unsubscribe, bounce, or complaint events
+      responses:
+        "200": { description: Event processed idempotently }
+        "401": { description: Signature invalid }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
